@@ -1,6 +1,7 @@
 import socket
 import threading
 import serial_writer
+import time
 
 class ISP_Server:
     #server socket = 2700
@@ -15,11 +16,18 @@ class ISP_Server:
         self.lock = False
         threading.Thread(target = self.listen).start()
         threading.Thread(target = self.send).start()
+        while len(threading.enumerate()) > 0:
+            time.sleep(0.5)
+
+    def __del__(self):
+        self.client.close()
+        self.server.close()
 
     def listen(self):
         self.client.listen()
         c, addr = self.client.accept()
         while True:
+            sleep(0.1)
             try:
                 data = c.recv(4096)
                 if data:
@@ -38,9 +46,10 @@ class ISP_Server:
 
     def send(self):
         while True:
+            sleep(0.1)
             if not self.lock:
                 self.lock = True
                 data = serial_writer.read(self.ser)
                 self.lock = False
-                #print(data)
+                print(data)
                 self.server.send(data)

@@ -16,8 +16,6 @@ class ISP_Server:
         self.lock = False
         threading.Thread(target = self.listen).start()
         threading.Thread(target = self.send).start()
-        while len(threading.enumerate()) > 0:
-            time.sleep(0.5)
 
     def __del__(self):
         self.client.close()
@@ -53,3 +51,10 @@ class ISP_Server:
                 self.lock = False
                 print(data)
                 self.server.send(data)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 5:
+        print("Error! Too few arguments!)
+    server = ISP_Server(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+    while len(threading.enumerate()) > 0:
+        time.sleep(0.5)

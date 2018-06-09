@@ -13,3 +13,11 @@ def no_debug():
     import esp
     # this can be run from the REPL as well
     esp.osdebug(None)
+
+connect()
+import isp_server
+from time import sleep
+#self_addr, addr, serial, baud, reverse
+server = isp_server.ISP_Server("192.168.0.17", "192.168.0.5", None, 115200, True)
+while True:
+    sleep(0.5)

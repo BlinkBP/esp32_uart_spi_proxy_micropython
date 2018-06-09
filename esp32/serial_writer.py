@@ -1,9 +1,8 @@
 from machine import Pin, SPI
-import serial
 
 def open_serial(port, baud):
     spi = SPI(1)
-    spi.init(baudrate=115200, polarity=1, phase=0, sck=Pin(14), mosi=Pin(13), miso=Pin(12))
+    spi.init(baudrate=baud, polarity=1, phase=0, sck=Pin(14), mosi=Pin(13), miso=Pin(12))
     return spi
 
 def write(ser, data):
@@ -29,5 +28,6 @@ def read(ser):
         ss.value(0)
         data = ser.read(4096)
         ss.value(1)
-        if len(data) > 0:
+        if len(data) > 0 and data[0] != 0:
+            print("Got {} bytes of data!".format(len(data)))
             return data

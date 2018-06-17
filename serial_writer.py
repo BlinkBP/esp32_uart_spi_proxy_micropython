@@ -17,6 +17,9 @@ def send_once(port, baud, data):
 
 def read(ser):
     while True:
-        data = ser.read(4096)
-        if len(data) > 0:
+        data = ser.read(8)
+        if data and data[0] != b'\x00':
             return data
+
+def write(ser, data):
+    ser.write(data)

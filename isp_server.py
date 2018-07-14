@@ -9,20 +9,22 @@ class ISP_Server:
 
     def __init__(self, self_addr, addr, serial, baud, launch_serial, receive, send, reverse):
         print("Starting ISP_Server!")
+        self.connected = False
+        self.client_connected = False
         self.server = None
         self.client = None
         self.lock = False
+        self.reverse = reverse
         port = [2700, 2701]
         if reverse:
             port = port[::-1]
-        if launch_serial:
-            self.ser = serial_writer.open_serial(serial, baud)
-        else:
-            self.ser = None
         if receive:
-            _thread.start_new_thread(self.receive, (self_addr, addr, port[0], serial, baud))
+            _thread.start_new_thread(self.connect, (self_addr, addr, port[0]))
         if send:
-            _thread.start_new_thread(self.send, (self_addr, addr, port[1], serial, baud))
+            _thread.start_new_thread(self.start_server, (self_addr, addr, port[1]))
+        while not self.connected and not self.client_connected:
+            sleep(0.1)
+        _thread.start_new_thread(self.send_and_receive, (serial, baud))
 
     def __del__(self):
         if self.server is not None:
@@ -35,11 +37,42 @@ class ISP_Server:
         #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s
 
-    def receive(self, self_addr, addr, port, serial, baud):
+    def send_and_receive(self, serial, baud):
+        self.ser = serial_writer.open_serial(serial, baud)
+        if not self.reverse:
+            while True:
+                data = serial_writer.read(self.ser)
+                print("Read and sending to client:{}".format(data))
+                bytes_sent = self.c.send(data)
+                if bytes_sent != len(data):
+                    print("!!! Sent only {} bytes out of {}".format(bytes_sent, len(data)))
+                data = bytearray(0)
+                while len(data) == 0:
+                    data = self.client.recv(64)
+                    #data = data.decode("ascii").replace("\n", "")
+                    #data = "{}\n".format(data).encode()
+                if len(data) != 0:
+                    print("Received and writing to serial:{}".format(data))
+                    serial_writer.write(self.ser, data)
+        else:
+            while True:
+                data = self.client.recv(64)
+                data = data.decode("ascii").replace("\n", "")
+                data = "{}\n".format(data).encode()
+                if len(data) != 0:
+                    print("Received and writing to serial:{}".format(data))
+                    serial_writer.write(self.ser, data)
+                    buff = serial_writer.read(self.ser)
+                    print("Read and sending to client:{}".format(buff))
+                    bytes_sent = self.c.send(buff)
+                    if bytes_sent != len(buff):
+                        print("!!! Sent only {} bytes out of {}".format(bytes_sent, len(buff)))
+
+    def connect(self, self_addr, addr, port):
         print("Starting client...")
         self.client = self.get_socket()
         self.connected = False
-        sleep(10)
+        sleep(5)
         print("Trying to connect to {}:{}...".format(addr, port))
         while not self.connected:
             try:
@@ -48,39 +81,18 @@ class ISP_Server:
                 print("Connected with {} at {}".format(addr, port))
             except Exception as e:
                 sleep(1)
-        while True:
-            sleep(0.1)
-            try:
-                data = self.client.recv(64)
-                if data:
-                    while self.lock:
-                        pass
-                    self.lock = True
-                    print("Writing to own serial: {}".format(bytes(data)))
-                    serial_writer.write(self.ser, data)
-                    self.lock = False
-                else:
-                    raise error("Client disconnected!")
-            except:
-                return False
 
-    def send(self, self_addr, addr, port, serial, baud):
+    def start_server(self, self_addr, addr, port):
         print("Starting server...")
         self.server = self.get_socket()
+        self.client_connected = False
         self.server.bind((self_addr, port))
         print("Started server at {}:{}".format(self_addr, port))
         print("Listening for a client...")
         self.server.listen(1)
-        c, addr = self.server.accept()
+        self.c, addr = self.server.accept()
         print("Accepted connection from {}".format(addr))
-        while True:
-            sleep(0.1)
-            if not self.lock:
-                self.lock = True
-                data = serial_writer.read(self.ser)
-                self.lock = False
-                print("Read data from own serial: {}".format(bytes(data))).encode()
-                c.sendall(data)
+        self.client_connected = True
 
 if __name__ == "__main__":
     if len(sys.argv) < 6:

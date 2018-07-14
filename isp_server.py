@@ -1,6 +1,6 @@
 import socket
 import _thread
-import serial_writer
+import isp_writer
 from time import sleep
 
 class ISP_Server:
@@ -13,7 +13,6 @@ class ISP_Server:
         self.client_connected = False
         self.server = None
         self.client = None
-        self.lock = False
         self.reverse = reverse
         port = [2700, 2701]
         if reverse:
@@ -25,6 +24,7 @@ class ISP_Server:
         while not self.connected and not self.client_connected:
             sleep(0.1)
         _thread.start_new_thread(self.send_and_receive, (serial, baud))
+        print("ISP_Server started!")
 
     def __del__(self):
         if self.server is not None:
@@ -38,10 +38,10 @@ class ISP_Server:
         return s
 
     def send_and_receive(self, serial, baud):
-        self.ser = serial_writer.open_serial(serial, baud)
+        self.ser = isp_writer.open_serial(serial, baud)
         if not self.reverse:
             while True:
-                data = serial_writer.read(self.ser)
+                data = isp_writer.read(self.ser)
                 print("Read and sending to client:{}".format(data))
                 bytes_sent = self.c.send(data)
                 if bytes_sent != len(data):
@@ -53,7 +53,7 @@ class ISP_Server:
                     #data = "{}\n".format(data).encode()
                 if len(data) != 0:
                     print("Received and writing to serial:{}".format(data))
-                    serial_writer.write(self.ser, data)
+                    isp_writer.write(self.ser, data)
         else:
             while True:
                 data = self.client.recv(64)
@@ -61,8 +61,8 @@ class ISP_Server:
                 data = "{}\n".format(data).encode()
                 if len(data) != 0:
                     print("Received and writing to serial:{}".format(data))
-                    serial_writer.write(self.ser, data)
-                    buff = serial_writer.read(self.ser)
+                    isp_writer.write(self.ser, data)
+                    buff = isp_writer.read(self.ser)
                     print("Read and sending to client:{}".format(buff))
                     bytes_sent = self.c.send(buff)
                     if bytes_sent != len(buff):
@@ -99,4 +99,4 @@ if __name__ == "__main__":
         print("Error! Too few arguments!")
     server = ISP_Server(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
     while len(threading.enumerate()) > 0:
-        sleep(0.5)
+        sleep(1)

@@ -14,17 +14,28 @@ class ISP_Server:
         self.client_connected = False
         self.server = None
         self.client = None
-        self.slave = slave
         port = [2700, 2701]
+
         if slave:
+            from ucollections import deque
             port = port[::-1]
+        else:
+            from collections import deque
+        self.d_to_send = deque((), 64)
+        self.d_to_write = deque((), 64)
+
         if receive:
             _thread.start_new_thread(self.connect, (self_addr, addr, port[0]))
         if send:
             _thread.start_new_thread(self.start_server, (self_addr, addr, port[1]))
+
+        self.ser = isp_writer.open_serial(serial, baud)
         while not self.connected and not self.client_connected:
-            sleep(0.1)
-        _thread.start_new_thread(self.send_and_receive, (serial, baud))
+            sleep(0.2)
+        _thread.start_new_thread(self.send, ())
+        _thread.start_new_thread(self.read_serial, ())
+        _thread.start_new_thread(self.receive, ())
+        _thread.start_new_thread(self.write_serial, ())
         print("ISP_Server started!")
 
     def __del__(self):
@@ -38,53 +49,49 @@ class ISP_Server:
         #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s
 
-    def send_and_receive(self, serial, baud):
-        self.ser = isp_writer.open_serial(serial, baud)
-        if not self.slave:
-            while True:
-                data = None
-                data = isp_writer.read(self.ser)
-                if data is not None and len(data) > 0:
-                    print("Read and sending to client:{}".format(data))
-                    bytes_sent = self.c.sendall(data)
+    def read_serial(self):
+        while True:
+            data = None
+            data = isp_writer.read(self.ser)
+            if data is not None and len(data) > 0:
+                self.d_to_send.append(data)
 
-                data = None
-                try:
-                    data = self.client.recv(4096)
-                except:
-                    pass
-                #data = data.decode("ascii").replace("\n", "")
-                #data = "{}\n".format(data).encode()
+    def write_serial(self):
+        while True:
+            try:
+                data = self.d_to_write.popleft()
                 if data is not None and len(data) > 0:
                     print("Received and writing to serial:{}".format(data))
                     isp_writer.write(self.ser, data)
-                #sleep(0.1)
-        else: #ESP32
-            while True:
-                data = None
-                try:
-                    data = self.client.recv(4096)
-                except:
-                    pass
-                #data = data.decode("ascii").replace("\n", "")
-                #data = "{}\n".format(data).encode()
+            except:
+                sleep(0.1)
 
-                if data is not None and len(data) > 0:
-                    print("Received and writing to serial:{}".format(data))
-                    isp_writer.write(self.ser, data)
-
-                data = None
-                data = isp_writer.read(self.ser)
+    def send(self):
+        while True:
+            try:
+                data = self.d_to_send.popleft()
                 if data is not None and len(data) > 0:
                     print("Read and sending to client:{}".format(data))
-                    bytes_sent = self.c.sendall(data)
-                #sleep(0.1)
+                    self.c.sendall(data)
+            except:
+                sleep(0.1)
 
-    def send(self, cmd):
+    def receive(self):
+        while True:
+            data = None
+            try:
+                data = self.client.recv(512)
+            except:
+                pass
+            if data is not None and len(data) > 0:
+                self.d_to_write.append(data)
+
+
+    def sendcmd(self, cmd):
         if self.c:
             self.c.send(cmd)
 
-    def read(self):
+    def readcmd(self):
         if self.client:
             try:
                 return self.client.recv(64)
@@ -101,7 +108,7 @@ class ISP_Server:
             try:
                 self.client.connect((addr, port))
                 self.connected = True
-                self.client.settimeout(0.1)
+                #self.client.settimeout(0.1)
                 print("Connected with {} at {}".format(addr, port))
             except Exception as e:
                 sleep(0.5)

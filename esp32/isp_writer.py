@@ -22,12 +22,12 @@ def write_once(port, baud, data):
     ser.close()
 
 def read(ser):
+    ss = Pin(5, Pin.OUT)
     while True:
-        ss = Pin(5, Pin.OUT)
         ss.value(0)
         data = ser.read(64)
         ss.value(1)
-        if data and data[0] != b'\x00':
+        if data and data != 0:
             return data
 
 def send_recv(ser, data, buff):

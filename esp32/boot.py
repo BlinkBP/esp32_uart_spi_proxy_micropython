@@ -15,9 +15,10 @@ def no_debug():
     esp.osdebug(None)
 
 connect()
+#import isp_server
 import isp_server
 from time import sleep
-#self_addr, addr, serial, baud, reverse
-server = isp_server.ISP_Server("192.168.0.17", "192.168.0.5", None, 115200, True)
+#self_addr, addr, serial, baud, launch_serial, receive, send, reverse
+server = isp_server.ISP_Server("192.168.0.17", "192.168.0.14", None, 115200, True, True, True, True)
 while True:
     sleep(0.5)

@@ -21,8 +21,8 @@ class ISP_Server:
             port = port[::-1]
         else:
             from collections import deque
-        self.d_to_send = deque((), 64)
-        self.d_to_write = deque((), 64)
+        self.d_to_send = deque((), 128)
+        self.d_to_write = deque((), 128)
 
         if receive:
             _thread.start_new_thread(self.connect, (self_addr, addr, port[0]))
@@ -60,27 +60,25 @@ class ISP_Server:
         while True:
             try:
                 data = self.d_to_write.popleft()
-                if data is not None and len(data) > 0:
-                    print("Received and writing to serial:{}".format(data))
-                    isp_writer.write(self.ser, data)
+                print("Received and writing to serial:{}".format(data))
+                isp_writer.write(self.ser, data)
             except:
-                sleep(0.1)
+                pass
 
     def send(self):
         while True:
             try:
                 data = self.d_to_send.popleft()
-                if data is not None and len(data) > 0:
-                    print("Read and sending to client:{}".format(data))
-                    self.c.sendall(data)
+                print("Read and sending to client:{}".format(data))
+                self.c.sendall(data)
             except:
-                sleep(0.1)
+                pass
 
     def receive(self):
         while True:
             data = None
             try:
-                data = self.client.recv(512)
+                data = self.client.recv(64)
             except:
                 pass
             if data is not None and len(data) > 0:
@@ -102,7 +100,6 @@ class ISP_Server:
         print("Starting client...")
         self.client = self.get_socket()
         self.connected = False
-        sleep(1)
         print("Trying to connect to {}:{}...".format(addr, port))
         while not self.connected:
             try:

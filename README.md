@@ -1,5 +1,5 @@
-# esp32_uart_isp_proxy
-UART/ISP proxy for ESP32 running Micropython
+# esp32_uart_spi_proxy
+UART/SPI proxy for ESP32 running Micropython
 
 
 The idea was to communicate with a 3d printer via Wi-Fi but instead of using an expensive RPi I wanted to use a cheap ESP32.
